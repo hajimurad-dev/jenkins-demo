@@ -1,9 +1,13 @@
-FROM jenkins/jenkins:2.346.2-jdk11
+# Build the application first using Maven
+FROM maven:3.8-openjdk-17 as build
+WORKDIR /app
+COPY . .
+RUN mvn install
 
-COPY plugins.txt /usr/share/jenkins/ref/plugins.txt
-
-RUN jenkins-plugin-cli --plugin-file /usr/share/jenkins/ref/plugins.txt
-
-COPY seedJob.xml /usr/share/jenkins/ref/jobs/seed-job/config.xml
-
-ENV JAVA_OPTS -Djenkins.install.runSetupWizard=false
+# Inject the JAR file into a new container to keep the file small
+FROM openjdk:17-jdk-slim
+WORKDIR /app
+COPY --from=build /app/target/jenkins-demo-*.jar /app/app.jar
+EXPOSE 8080
+ENTRYPOINT ["sh", "-c"]
+CMD ["java -jar app.jar"]
